@@ -9,10 +9,10 @@ if tvs.__version__ >= '0.13':
 else:
     tvs_new = False
 
-from openood.datasets.imglist_dataset import ImglistDataset
+from openood.datasets.imglist_dataset import ImglistDataset, MemoryDataset
 from openood.preprocessors import BasePreprocessor
 
-from .preprocessor import get_default_preprocessor, ImageNetCPreProcessor
+from .preprocessor import get_default_preprocessor, ImageNetCPreProcessor, default_preprocessing_dict
 
 DATA_INFO = {
     'cifar10': {
@@ -57,6 +57,25 @@ DATA_INFO = {
                 'tin': {
                     'data_dir': 'images_classic/',
                     'imglist_path': 'benchmark_imglist/cifar10/test_tin.txt'
+                }
+            },
+            'adv': {
+                'datasets': ['fgsm', 'pgd', 'igm', 'iter'],
+                'fgsm': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar10/fgsm.npy'
+                },
+                'pgd': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar10/pgd.npy'
+                },
+                'igm': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar10/igm.npy'
+                },
+                'iter': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar10/iter.npy'
                 }
             },
             'far': {
@@ -116,6 +135,25 @@ DATA_INFO = {
                 'tin': {
                     'data_dir': 'images_classic/',
                     'imglist_path': 'benchmark_imglist/cifar100/test_tin.txt'
+                }
+            },
+            'adv': {
+                'datasets': ['fgsm', 'pgd', 'igm', 'iter'],
+                'fgsm': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar100/fgsm.npy'
+                },
+                'pgd': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar100/pgd.npy'
+                },
+                'igm': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar100/igm.npy'
+                },
+                'iter': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/cifar100/iter.npy'
                 }
             },
             'far': {
@@ -201,6 +239,25 @@ DATA_INFO = {
                     'data_dir': 'images_largescale/',
                     'imglist_path':
                     'benchmark_imglist/imagenet200/test_ninco.txt'
+                }
+            },
+            'adv': {
+                'datasets': ['fgsm', 'pgd', 'igm', 'iter'],
+                'fgsm': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/imagenet200/fgsm.npy'
+                },
+                'pgd': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/imagenet200/pgd.npy'
+                },
+                'igm': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/imagenet200/igm.npy'
+                },
+                'iter': {
+                    'data_dir': 'images_classic/',
+                    'imglist_path': 'benchmark_imglist/imagenet200/iter.npy'
                 }
             },
             'far': {
@@ -438,6 +495,8 @@ def get_id_ood_dataloader(id_name, data_root, preprocessor, **loader_kwargs):
 
     # weak augmentation for data_aux
     test_standard_preprocessor = get_default_preprocessor(id_name)
+    mean, std = default_preprocessing_dict[id_name]['normalization']
+    nopreprocessor = ImageNetCPreProcessor(mean, std)
 
     dataloader_dict = {}
     data_info = DATA_INFO[id_name]
@@ -497,15 +556,23 @@ def get_id_ood_dataloader(id_name, data_root, preprocessor, **loader_kwargs):
             sub_dataloader_dict = {}
             for dataset_name in split_config['datasets']:
                 dataset_config = split_config[dataset_name]
-                dataset = ImglistDataset(
-                    name='_'.join((id_name, 'ood', dataset_name)),
-                    imglist_pth=os.path.join(data_root,
-                                             dataset_config['imglist_path']),
-                    data_dir=os.path.join(data_root,
-                                          dataset_config['data_dir']),
-                    num_classes=data_info['num_classes'],
-                    preprocessor=preprocessor,
-                    data_aux_preprocessor=test_standard_preprocessor)
+                if split == 'adv':
+                    dataset = MemoryDataset(
+                        name='_'.join((id_name, 'ood', dataset_name)),
+                        imglist_pth=os.path.join(data_root,
+                                                dataset_config['imglist_path']),
+                        preprocessor=nopreprocessor
+                        )
+                else:
+                    dataset = ImglistDataset(
+                        name='_'.join((id_name, 'ood', dataset_name)),
+                        imglist_pth=os.path.join(data_root,
+                                                dataset_config['imglist_path']),
+                        data_dir=os.path.join(data_root,
+                                            dataset_config['data_dir']),
+                        num_classes=data_info['num_classes'],
+                        preprocessor=preprocessor,
+                        data_aux_preprocessor=test_standard_preprocessor)
                 dataloader = DataLoader(dataset, **loader_kwargs)
                 sub_dataloader_dict[dataset_name] = dataloader
             dataloader_dict['ood'][split] = sub_dataloader_dict

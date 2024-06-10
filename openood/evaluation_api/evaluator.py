@@ -1,6 +1,7 @@
 from typing import Callable, List, Type
 
 import os
+import time
 import numpy as np
 import pandas as pd
 import torch
@@ -118,6 +119,7 @@ class Evaluator:
             net = ScaleNet(net)
 
         # postprocessor setup
+        t0 = time.time()
         postprocessor.setup(net, dataloader_dict['id'], dataloader_dict['ood'])
 
         self.id_name = id_name
@@ -146,6 +148,8 @@ class Evaluator:
                  for k in dataloader_dict['ood']['near'].keys()},
                 'far': {k: None
                         for k in dataloader_dict['ood']['far'].keys()},
+                'adv': {k: None
+                        for k in dataloader_dict['ood']['adv'].keys()},
             },
             'id_preds': None,
             'id_labels': None,
@@ -158,6 +162,7 @@ class Evaluator:
         if (self.postprocessor.APS_mode
                 and not self.postprocessor.hyperparam_search_done):
             self.hyperparam_search()
+        self.time = time.time() - t0
 
         self.net.eval()
 
@@ -296,20 +301,24 @@ class Evaluator:
             far_metrics = self._eval_ood([id_pred, id_conf, id_gt],
                                          ood_split='far',
                                          progress=progress)
+            adv_metrics = self._eval_ood([id_pred, id_conf, id_gt],
+                                         ood_split='adv',
+                                         progress=progress)
 
             if self.metrics[f'{id_name}_acc'] is None:
                 self.eval_acc(id_name)
-            near_metrics[:, -1] = np.array([self.metrics[f'{id_name}_acc']] *
-                                           len(near_metrics))
-            far_metrics[:, -1] = np.array([self.metrics[f'{id_name}_acc']] *
-                                          len(far_metrics))
+            # near_metrics[:, -1] = np.array([self.metrics[f'{id_name}_acc']] *
+            #                                len(near_metrics))
+            # far_metrics[:, -1] = np.array([self.metrics[f'{id_name}_acc']] *
+            #                               len(far_metrics))
 
+            time_array = np.array([self.time]*6).reshape(1, -1)
             self.metrics[task] = pd.DataFrame(
-                np.concatenate([near_metrics, far_metrics], axis=0),
+                np.concatenate([near_metrics, far_metrics, adv_metrics, time_array], axis=0),
                 index=list(self.dataloader_dict['ood']['near'].keys()) +
                 ['nearood'] + list(self.dataloader_dict['ood']['far'].keys()) +
-                ['farood'],
-                columns=['FPR@95', 'AUROC', 'AUPR_IN', 'AUPR_OUT', 'ACC'],
+                ['farood'] + list(self.dataloader_dict['ood']['adv'].keys()) + ['adv', 'setup_time'],
+                columns=['FPR@95', 'AUROC', 'AUPR_IN', 'AUPR_OUT', 'ACC', 'TIME'],
             )
         else:
             print('Evaluation has already been done!')
@@ -334,8 +343,10 @@ class Evaluator:
             if self.scores['ood'][ood_split][dataset_name] is None:
                 print(f'Performing inference on {dataset_name} dataset...',
                       flush=True)
+                t0 = time.time()
                 ood_pred, ood_conf, ood_gt = self.postprocessor.inference(
                     self.net, ood_dl, progress)
+                delta_t = (time.time() - t0) / len(ood_dl) * 10_000
                 self.scores['ood'][ood_split][dataset_name] = [
                     ood_pred, ood_conf, ood_gt
                 ]
@@ -353,7 +364,7 @@ class Evaluator:
             label = np.concatenate([id_gt, ood_gt])
 
             print(f'Computing metrics on {dataset_name} dataset...')
-            ood_metrics = compute_all_metrics(conf, label, pred)
+            ood_metrics = compute_all_metrics(conf, label, pred) + [delta_t]
             metrics_list.append(ood_metrics)
             self._print_metrics(ood_metrics)
 
@@ -364,7 +375,7 @@ class Evaluator:
         return np.concatenate([metrics_list, metrics_mean], axis=0) * 100
 
     def _print_metrics(self, metrics):
-        [fpr, auroc, aupr_in, aupr_out, _] = metrics
+        [fpr, auroc, aupr_in, aupr_out, _, _] = metrics
 
         # print ood metric results
         print('FPR@95: {:.2f}, AUROC: {:.2f}'.format(100 * fpr, 100 * auroc),

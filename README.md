@@ -1,3 +1,15 @@
+# Modifications to adversary eval
+
+- First download the original datasets:
+```bash
+sh ./scripts/download/download.sh
+```
+
+- Execute the notebook `adv_generator.ipynb` to generate the data.
+
+- Now you can run the benchmark `bash run.sh`. The results will be saved to `results/<model_arch>/ood/<method>.csv`
+
+
 # OpenOOD: Benchmarking Generalized OOD Detection
 
 <!--

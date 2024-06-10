@@ -3,6 +3,7 @@ import io
 import logging
 import os
 
+import numpy as np
 import torch
 from PIL import Image, ImageFile
 
@@ -104,3 +105,22 @@ class ImglistDataset(BaseDataset):
             logging.error('[{}] broken'.format(path))
             raise e
         return sample
+
+
+class MemoryDataset(BaseDataset):
+    def __init__(self,
+                 name,
+                 imglist_pth,
+                 preprocessor,
+                 **kwargs):
+        super(MemoryDataset, self).__init__(**kwargs)
+
+        self.name = name
+        self.imglist = np.load(imglist_pth)
+        self.preprocessor = preprocessor
+
+    def __len__(self):
+        return len(self.imglist)
+
+    def getitem(self, index):
+        return {'data': self.preprocessor(self.imglist[index]), 'label': -1}

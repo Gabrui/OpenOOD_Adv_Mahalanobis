@@ -41,6 +41,9 @@ from .vim_postprocessor import VIMPostprocessor
 from .rts_postprocessor import RTSPostprocessor
 from .gen_postprocessor import GENPostprocessor
 from .relation_postprocessor import RelationPostprocessor
+from .no_detector import NoDetector
+from .simple_mahalanobis import SimpleMahalanobis
+from .class_mahalanobis import ClassMahalanobis
 
 
 def get_postprocessor(config: Config):
@@ -84,6 +87,9 @@ def get_postprocessor(config: Config):
         'rotpred': RotPredPostprocessor,
         'rankfeat': RankFeatPostprocessor,
         'gen': GENPostprocessor,
+        'nodetector': NoDetector,
+        'simple': SimpleMahalanobis,
+        'class_mahalanobis': ClassMahalanobis,
         'relation': RelationPostprocessor,
         't2fnorm': T2FNormPostprocessor,
     }

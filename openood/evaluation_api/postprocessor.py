@@ -15,6 +15,7 @@ from openood.postprocessors import (
     VIMPostprocessor, RotPredPostprocessor, RankFeatPostprocessor,
     RMDSPostprocessor, SHEPostprocessor, CIDERPostprocessor, NPOSPostprocessor,
     GENPostprocessor, NNGuidePostprocessor, RelationPostprocessor,
+    NoDetector, SimpleMahalanobis, ClassMahalanobis,
     T2FNormPostprocessor)
 from openood.utils.config import Config, merge_configs
 
@@ -61,6 +62,9 @@ postprocessors = {
     'gen': GENPostprocessor,
     'nnguide': NNGuidePostprocessor,
     'relation': RelationPostprocessor,
+    'nodetector': NoDetector,
+    'simple': SimpleMahalanobis,
+    'class_mahalanobis': ClassMahalanobis,
     't2fnorm': T2FNormPostprocessor
 }
 
